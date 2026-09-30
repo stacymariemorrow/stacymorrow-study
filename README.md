@@ -18,6 +18,10 @@ Tests: `node tests/helpers.test.js`
 
 A quarter picker appears automatically once two quarters are loaded. Link a past quarter with `?q=fall-2026`.
 
+## Bookshelf
+
+Books outside the syllabus live in `site/data/bookshelf.js`. Add new books at the top; the newest five show and the rest sit behind an expander. Course lists work the same way and only show readings whose class date has passed.
+
 ## Amazon
 
 Once Associates approves you, set `amazonTag` in `config.js` (e.g. `"stacymorrow-20"`). Every Buy button picks it up.

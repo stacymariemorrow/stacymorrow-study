@@ -20,9 +20,18 @@ const today = new Date(2026, 8, 30);
 const r = { date: "2026-09-30", short: "Hall (1981)", title: "The whites of their eyes", apa: "", themes: ["race", "ideology"], access: "book" };
 assert.ok(h.isRead(r, today));
 assert.ok(!h.isRead({ date: "2026-10-05" }, today));
-assert.ok(h.matches(r, "read", "hall ideology", today));
-assert.ok(!h.matches(r, "upcoming", "", today));
+assert.ok(h.matches(r, "all", "hall ideology", today));
+assert.ok(!h.matches(r, "all", "gerbner", today));
 assert.ok(!h.matches(r, "free", "", today));
 assert.ok(h.matches({ ...r, access: "free", read_url: "https://x" }, "free", "", today));
+
+const list = [
+  { id: "a", apa: "x", date: "2026-09-14" },
+  { id: "b", apa: "x", date: "2026-09-30" },
+  { id: "c", apa: "x", date: "2026-10-05" },
+  { id: "d", apa: "", date: "2026-09-16" },
+  { id: "e", apa: "x", date: "2026-09-30" },
+];
+assert.deepStrictEqual(h.newestFirst(list, today).map(x => x.id), ["b", "e", "a"]); // no future, no TBD, stable ties
 
 console.log("all helper tests passed");
