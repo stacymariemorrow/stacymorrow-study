@@ -29,3 +29,13 @@ Once Associates approves you, set `amazonTag` in `config.js` (e.g. `"stacymorrow
 ## Reading fields
 
 `date` (class day), `short`, `title`, `apa` (italics in *asterisks*), `access` (`free`, `stream`, `book`, `paywalled`), `read_url`, `doi_url`, `isbn10`, `summary`, `analysis`, `themes`, `confidence`.
+
+## Analytics
+
+Google Tag Manager `GTM-5X4KNMK6` (account backroom) loads GA4 stream `G-XHQLZ3YJME` (property Backroom Syndicate, stream "stacymorrow study").
+GA4 enhanced measurement covers page views, scrolls, outbound clicks, site search, file downloads and form interactions.
+The site pushes these to `dataLayer`, and the GTM tag "GA4 Event - site events" forwards them with parameters
+`label, course, section, link_url, search_term, cta_location`:
+
+read_now, buy_book, borrow_free, publisher_page, google_scholar, watch_listen, reading_open, show_more,
+course_open, search, filter_select, contact_click, generate_lead, work_link_click

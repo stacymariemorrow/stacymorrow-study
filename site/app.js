@@ -69,9 +69,35 @@
       .map(function (x) { return x.r; });
   }
 
-  var helpers = { newestFirst: newestFirst, esc: esc, apaToHtml: apaToHtml, parseDate: parseDate, mondayOf: mondayOf,
+  // Build a GA4-friendly dataLayer payload; drops empty values, trims strings to 100 chars.
+  function trackPayload(event, params) {
+    var out = { event: event };
+    Object.keys(params || {}).forEach(function (k) {
+      var v = params[k];
+      if (v === undefined || v === null || v === "") return;
+      out[k] = typeof v === "string" ? v.slice(0, 100) : v;
+    });
+    return out;
+  }
+
+  var helpers = { newestFirst: newestFirst, trackPayload: trackPayload, esc: esc, apaToHtml: apaToHtml, parseDate: parseDate, mondayOf: mondayOf,
     weekOfQuarter: weekOfQuarter, amazonUrl: amazonUrl, isRead: isRead, matches: matches };
   if (typeof module !== "undefined" && module.exports) { module.exports = helpers; return; }
+
+  /* ---------- analytics (Google Tag Manager dataLayer) ---------- */
+
+  W.dataLayer = W.dataLayer || [];
+  function track(event, params) { W.dataLayer.push(trackPayload(event, params)); }
+  var byId = {};
+  function indexReadings() {
+    byId = {};
+    QUARTERS.forEach(function (q) { q.readings.forEach(function (r) { byId[r.id] = { r: r, section: "course" }; }); });
+    BOOKSHELF.forEach(function (r) { byId[r.id] = { r: r, section: "bookshelf" }; });
+  }
+  function readingParams(id) {
+    var hit = byId[id]; if (!hit) return {};
+    return { label: hit.r.short + (hit.r.title ? ", " + hit.r.title : ""), course: hit.r.course || "bookshelf", section: hit.section };
+  }
 
   /* ---------- rendering ---------- */
 
@@ -92,12 +118,15 @@
   function actions(r) {
     var out = [];
     var tag = CFG.amazonTag || "";
-    if (r.read_url && r.access === "free") out.push('<a class="btn btn-gold" href="' + esc(r.read_url) + '" target="_blank" rel="noopener">Read now</a>');
-    if (r.read_url && r.access === "stream") out.push('<a class="btn btn-gold" href="' + esc(r.read_url) + '" target="_blank" rel="noopener">Watch or listen</a>');
-    if (r.isbn10) out.push('<a class="btn btn-crimson" href="' + esc(amazonUrl(r.isbn10, tag)) + '" target="_blank" rel="sponsored noopener">Buy the book</a>');
-    if (r.read_url && r.access === "book") out.push('<a class="btn btn-ghost" href="' + esc(r.read_url) + '" target="_blank" rel="noopener">Borrow free</a>');
-    if (r.doi_url) out.push('<a class="btn btn-ghost" href="' + esc(r.doi_url) + '" target="_blank" rel="noopener">Publisher page</a>');
-    if (r.kind !== "film" && r.kind !== "podcast" && r.title && r.apa) out.push('<a class="btn btn-ghost" href="' + esc(scholarUrl(r)) + '" target="_blank" rel="noopener">Google Scholar</a>');
+    function btn(cls, href, label, ev, rel) {
+      return '<a class="btn ' + cls + '" href="' + esc(href) + '" target="_blank" rel="' + (rel || "noopener") + '" data-ev="' + ev + '" data-id="' + esc(r.id) + '">' + label + "</a>";
+    }
+    if (r.read_url && r.access === "free") out.push(btn("btn-gold", r.read_url, "Read now", "read_now"));
+    if (r.read_url && r.access === "stream") out.push(btn("btn-gold", r.read_url, "Watch or listen", "watch_listen"));
+    if (r.isbn10) out.push(btn("btn-crimson", amazonUrl(r.isbn10, tag), "Buy the book", "buy_book", "sponsored noopener"));
+    if (r.read_url && r.access === "book") out.push(btn("btn-ghost", r.read_url, "Borrow free", "borrow_free"));
+    if (r.doi_url) out.push(btn("btn-ghost", r.doi_url, "Publisher page", "publisher_page"));
+    if (r.kind !== "film" && r.kind !== "podcast" && r.title && r.apa) out.push(btn("btn-ghost", scholarUrl(r), "Google Scholar", "google_scholar"));
     return out.join("");
   }
 
@@ -234,15 +263,42 @@
       document.getElementById("quarter-switch").hidden = false;
     }
 
-    document.getElementById("q").addEventListener("input", function (e) { state.query = e.target.value.trim(); renderLists(state.quarter); });
+    indexReadings();
+    var searchTimer = null;
+    document.getElementById("q").addEventListener("input", function (e) {
+      state.query = e.target.value.trim(); renderLists(state.quarter);
+      clearTimeout(searchTimer);
+      if (state.query.length > 2) searchTimer = setTimeout(function () { track("search", { search_term: state.query }); }, 1200);
+    });
     document.querySelectorAll(".chip").forEach(function (b) {
       b.addEventListener("click", function () {
         document.querySelectorAll(".chip").forEach(function (x) { x.classList.remove("is-on"); x.setAttribute("aria-pressed", "false"); });
         b.classList.add("is-on"); b.setAttribute("aria-pressed", "true");
         state.filter = b.dataset.filter; renderLists(state.quarter);
+        track("filter_select", { label: b.dataset.filter });
       });
     });
+    // Opening a course, a reading, or the "show earlier" expander (user clicks only, not re-renders).
     document.addEventListener("click", function (e) {
+      var sum = e.target.closest("summary");
+      if (!sum) return;
+      var d = sum.parentElement;
+      if (d.open) return; // this click closes it
+      if (d.matches("details.course")) track("course_open", { course: d.id.replace("list-", "") });
+      else if (d.matches("details.reading")) track("reading_open", readingParams(d.id.replace(/^(r|b)-/, "")));
+      else if (d.matches("details.more")) { var host = d.closest("details.course"); track("show_more", { section: host ? "course" : "bookshelf", course: host ? host.id.replace("list-", "") : "bookshelf" }); }
+    });
+
+    document.addEventListener("click", function (e) {
+      var ev = e.target.closest("[data-ev]");
+      if (ev) { var p = readingParams(ev.dataset.id); p.link_url = ev.href; track(ev.dataset.ev, p); }
+      var mail = e.target.closest('a[href^="mailto:"]');
+      if (mail) { var sec = mail.closest("header, section"); track("contact_click", { cta_location: sec ? (sec.id || sec.className.split(" ")[0]) : "page", link_url: "mailto" }); }
+      var work = e.target.closest(".work-card, .feature");
+      if (work) track("work_link_click", { label: (work.querySelector(".work-name, .feature-name") || {}).textContent, link_url: work.href });
+      var li = e.target.closest('a[href*="linkedin.com"]');
+      if (li && !work) track("work_link_click", { label: "LinkedIn", link_url: li.href });
+
       var a = e.target.closest("[data-reading]");
       if (a) { e.preventDefault(); openReading(a.dataset.reading); return; }
       var o = e.target.closest("[data-open]");
@@ -255,6 +311,7 @@
     document.getElementById("contact-form").addEventListener("submit", function (e) {
       e.preventDefault();
       var f = e.target;
+      track("generate_lead", { label: f.topic.value, cta_location: "contact_form" });
       var subject = f.topic.value + " from " + f.name.value;
       window.location.href = "mailto:" + (CFG.email || "") + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(f.message.value + "\n\n" + f.name.value);
     });

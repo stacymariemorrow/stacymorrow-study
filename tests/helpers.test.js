@@ -34,4 +34,7 @@ const list = [
 ];
 assert.deepStrictEqual(h.newestFirst(list, today).map(x => x.id), ["b", "e", "a"]); // no future, no TBD, stable ties
 
+assert.deepStrictEqual(h.trackPayload("buy_book", { label: "Han (2020)", course: "", link_url: null, n: 0 }), { event: "buy_book", label: "Han (2020)", n: 0 });
+assert.strictEqual(h.trackPayload("search", { search_term: "x".repeat(150) }).search_term.length, 100);
+
 console.log("all helper tests passed");
