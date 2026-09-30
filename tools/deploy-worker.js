@@ -4,7 +4,7 @@
   const A = '679c978427b96c7d05185cd70bdcfc01', NAME = 'stacymorrow-study';
   const base = 'https://raw.githubusercontent.com/stacymariemorrow/stacymorrow-study/main/site/';
   const js = 'text/javascript; charset=utf-8';
-  const paths = { '/index.html': 'text/html; charset=utf-8', '/styles.css': 'text/css; charset=utf-8', '/app.js': js, '/config.js': js, '/data/fall-2026.js': js, '/data/bookshelf.js': js };
+  const paths = { '/index.html': 'text/html; charset=utf-8', '/styles.css': 'text/css; charset=utf-8', '/app.js': js, '/config.js': js, '/data/fall-2026.js': js, '/data/bookshelf.js': js, '/favicon.svg': 'image/svg+xml' };
   const files = {};
   for (const p of Object.keys(paths)) { const r = await fetch(base + p.slice(1) + '?t=' + Date.now()); if (!r.ok) throw new Error(p + ' ' + r.status); files[p] = { t: paths[p], b: await r.text() }; }
   const worker = `const FILES = ${JSON.stringify(files)};
