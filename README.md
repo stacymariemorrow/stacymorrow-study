@@ -4,7 +4,7 @@ Static site served by the Cloudflare Worker `stacymorrow-study` on stacymorrow.s
 
 ## Deploy
 
-1. `python3 build_data.py` if reading data changed, then commit and push to `main`.
+1. `python3 build_data.py` if reading data changed. Bump the `?v=` number on the css and script tags in `index.html`, then commit and push to `main`.
 2. Run `tools/deploy-worker.js` in the browser console on dash.cloudflare.com.
 
 Tests: `node tests/helpers.test.js`
